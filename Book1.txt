@@ -1,0 +1,5 @@
+nombre	edad
+Ana	1
+Maria	2
+Pablo	3
+Matias	1.5
