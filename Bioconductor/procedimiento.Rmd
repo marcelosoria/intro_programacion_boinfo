@@ -1,0 +1,384 @@
+---
+title: "Análisis transcriptómico con DESeq2"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Instalar Bioconductor
+
+Bioconductor (https://bioconductor.org/) es un proyecto basado en R que tiene por objetivo publicar y mantener en forma organizada y sincronizada una gran cantidad de paquetes para bioinformática.
+
+Para poder usar las herramientas de Bioconductor primero hay que instalar el gestor de Bioconductor:
+
+```{r cache=TRUE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+   install.packages("BiocManager")
+```
+
+Una vez que se completa este paso, se pueden instalar las *libraries* que necesitemos. Esto se hace una sola vez (por eso está comentado) en la computadora donde estamos trabajando. Para este ejercicio en particular precisamos:
+
+```{r}
+# BiocManager::install("org.Sc.sgd.db")
+# BiocManager::install("DESeq2")
+
+```
+
+Cargamos algunos de los paquetes que vamos a precisar:
+
+```{r, message=FALSE, warning=FALSE}
+library(DESeq2)
+library(stringr)
+```
+
+# Transcriptómica con DESeq2
+
+El objetivo de este módulo es utilizar varios paquetes de Bioconductor para hacer un análisis de transcriptómica. Los datos que usaremos corresponden a este paper:
+
+Transcriptome and network analyses in *Saccharomyces cerevisiae* reveal that amphotericin B and lactoferrin synergy disrupt metal homeostasis and stress response
+
+https://www.nature.com/articles/srep40232
+
+
+Las secuencias y varios detalles experimentales están depositados en el NCBI como un *Bioproject* con el número de acceso PRJNA318684: 
+
+https://www.ncbi.nlm.nih.gov/bioproject/PRJNA318684/
+
+## Pasos previos
+
+Para la secuenciación se utilizó tecnología Illumina y las secuencias crudas en formato fastq se pueden descargar desde el NCBI. Antes de poder utilizar estas secuencias hay que hacer varios procesos que se realizan desde la consola de linux, fuera de R/Bioconductor. En verdad, algunos pasos podrían hacerse desde Bioconductor, pero no es muy práctico. 
+
+Los pasos para hacer el procesamiento previo en linux y los programas requeridos están en el archivo **procedimiento_linux.sh** que está en esta misma carpeta. Si los quieren correr, tengan en cuenta que la suma de todos los archivos ocupan bastante memoria y el proceso completo toma un tiempo para correr. En resumen, los pasos de este procesamiento previo son:
+
+1. Descarga de archivos del NCBI.
+2. Revisión de la calidad de las secuencias.
+3. En función del resultado del paso 2, hacer la limpieza de secuencias.
+4. Mapear las secuencias contra un genoma de referencia para obtener el recuento de secuencias por transcripto.
+
+Para hacer este taller ya tenemos listos los archivos necesarios generados por el procedimiento anterior.
+
+## Archivos fastq y calidad de las secuencias
+
+En esta sección veremos dos conceptos que no tienen que ver con programación: la estructura de los archivos fastq y su análisis de calidad. Pero, pueden ser útiles para los que tienen experiencia con métodos de secuenciación de alto rendimiento. El resto pueden saltear esta sección.
+
+el formato fastq es un formato que se usa mucho para almacenar datos de secuenciación de alto rendimiento, o *high-troughput*, como la que se hace con equipos Illumina. En un archivo fastq se guarda la identificación de cada *read*, su secuencia y la calidad de esa secuencia. Veamoslo en detalle con un ejemplo con dos secuencias:
+
+```{r eval=FALSE}
+@SRR3396381.sra.1 1 length=101
+NACTAAGTAACTTCATGTATGCTTATCTGAACTTGGTTAATCACACTCTGTACATGGAGCAGGTAGCCCACGACAAAGAACAACAACAACAACAACAACAA
++
+#1:DDBFDFFHHBFFHGIGBIHIIGGIGDGGIIIIG<EHGGIIIIIGGEE?DHHIIIHDGGHI=CHGGIGIIGHGFDC@DCEECBBBCCCBABBBBBBBBB
+@SRR3396381.sra.2 2 length=101
+CTTGAATTTAATTACCACCCCAGCAAAACTAACAGAGAGATTTTTGTTTAAGTCTTTCATTAGGGGGTTGAACTTGTTCGAGAGTCATATCAATGACTTCA
++
+CC@FFFFFGHGHGBHIIIGIDGHEGHEGEHIIIIIGICE=DGGIGGBCFEEHFHIIIIGEGIGEHGEBACCCDDCACD><??BD@CDDADDDDDDC@CC@C
+
+```
+
+Cada secuencia o *read* está definido por 4 lineas. 
+
+* La primera es la linea de identificación. La única parrte obligatoria es la primera palabra, que en estos casos son @SRR3396381.sra.1 y @SRR3396381.sra.2. El resto de la información es opcional.
+* La segunda línea es la secuencia
+* La tercera línea, que en este caso sólo tiene un símbolo "+", en la especificación actual del formato no se usa.
+* La cuarta linea contiene la información de calidad de cada base leída. Se usa un símbolo diferente para los diferentes valores que puede tener la calidad asignada por el secuenciador a la base correspondiente. En consecuencia, los largos de la linea 1 y la linea 4 deben coincidir.
+
+Un archivo fastq puede contener información de millones de *reads*. Un paso importante es analizar la calidad conjunta de todos los reads de cada archivo fastq. Existe más de una opción para hacer esto, para este taller usé FastQC y MultiQC. En el archivo [SRR3396382.sra_1_fastqc.html](SRR3396382.sra_1_fastqc.html) tienen la salida de FastQC para un archivo fastq.
+
+Para poder analizar los datos necesitamos información del experimento y qué tipo de tratamiento se aplicó a cada muestra de donde se obtuvo un pool de secuencias. Esta información está disponible como parte del Bioproject del NCBI.
+
+Si actualizaron la información de este taller desde Gihub, en la carpeta de trabajo tienen un archivo llamado "SraRunTable.txt" que pueden leer directamente. 
+
+```{r}
+run_table <- read.csv("SraRunTable.txt", header =T, stringsAsFactors = F)
+```
+
+Luego, para ver los datos se puede correr:
+
+```{r eval = FALSE}
+View(run_table)
+```
+
+También pueden hacer: 
+
+```{r}
+head(run_table)
+
+```
+
+### ¿Cómo conseguir el archivo *SraRunTable.txt* para cualquier *Bioproject*?
+
+El NCBI cada tanto cambia la interfaz gráfica de los *Bioprojects* y a veces es dificil donde encontrar *SraRunTable.txt*, pero esa información está siempre. 
+
+Una receta más o menos general es:
+
+1. Desde la página principal del *Bioproject*, buscar la etiqueta *SRA Experiments*, 
+2. Hacer click en el link donde se indica la cantidad de experimentos. 
+3. A continuación aparece la lista de todos los experimentos, Clickear sobre un experimento cualquiera, y en la nueva pantalla buscar un link "All runs". 
+4. Esto abre el "SRA Run Selector". Buscar la sección *Select* y desde ahi clickear en "Metadata". En el caso de este taller en particular, es mejor seleccionar abajo los primeros 12 registros, volver a la sección "Select" y ahí clickear "Metadata", pero el que corresponde a la opción "Selected"
+
+## Preparación del *dataframe* con información del diseño del experimento y archivos de mapeo y recuento de transcriptos.
+
+En este paso vamos a preparar un *dataframe* con los "metadatos", esto es, información del diseño experimental y referencias a la información que produjo STAR, el programa de mapeo y recuento de  de *reads* por transcripto en el genoma de referencia. Nuevamente, para este taller está información ya está lista para usar. Los que quieran generarla en linux, recuerden que el procedimiento está en el archivo *procedimiento.linux*.
+
+El primer paso es leer la metadata del *Bioproject* que se descarga desde el NCBI:
+
+```{r}
+run_table <- read.csv("SraRunTable.txt", header =T, stringsAsFactors = F)
+```
+
+No podemos usar este *dataframe* directamente en nuestros análisis, tenemos que preparar otro, que vamos a llamar *coldata*.
+
+El primer paso, es extraer el número de acceso de cada archivo fastq depositado en el NCBI. En este caso, tenemos un solo archivo fastq por muestra (a veces, hay más de un archivo fastq por muestra).
+
+```{r}
+coldata <- data.frame(run_names = run_table$Run, stringsAsFactors = F)
+```
+
+
+Luego creamos un vector de *strings* con los nombres de cada tratamiento, pero en lugar de copiarlos tal como están en *SraRunTable.txt*, los abreviamos. Luego agregamos este vector al datafrme *coldata*:
+
+```{r}
+treatm <- run_table$treatment
+treatm[ str_detect(treatm, "lactoferrin") ] <- "ampho_lacto"
+treatm[ str_detect(treatm, "amphotericin B") ] <- "ampho"
+coldata$treatm <- treatm
+```
+
+
+En el archivo *SraRunTable.txt* hay seis tratamientos que figuran como controles. Pero al leer el paper y la información que incluyeron los autores al depositar el experimento en el NCBI nos damos cuenta que hicieron los ensayos con anfotericina B y lactoferrina más anfotericina por separado. Más adelante veremos que estos dos conjuntos de controles dieron diferente patrones de expresión. 
+
+```{r}
+coldata <- coldata[order(coldata$run_names), ]
+coldata[coldata$run_names %in% c("SRR3396391", "SRR3396392", "SRR3396393"), "treatm"] <- rep("control2", 3)
+
+coldata$names <-  paste0(coldata$treatm, c("_1", "_2", "_3"))
+coldata
+```
+
+
+A continuación leemos los datos de mapeoLectura y preparación de los datos de STAR. Lo que estamos haciendo es cargar a un vector cada nombre de archivo de recuento de reads por gen -las salidas de STAR-, que son los que terminan en ".tab". Después, usamos esa lista de nombres para cargar los archivos de recuento a una lista (recuerden que lista de R, no es lo mismo que una lista de Python).
+
+También precisamos que la lista de archivos tenga el mismo orden que los nombres de muestras en *coldata*. Debe coincidir el orden de las muestras, no hace falta que los nombres sean idénticos. Para eso precisamos comparar *star_files* con *coldata$names*, aquí abreviamos este paso.
+
+
+```{r}
+star_files <- list.files( path = "./star_output", 
+                          pattern = "*ReadsPerGene.out.tab$", 
+                          full.names = TRUE)
+star_files
+```
+
+```{r}
+coldata$names
+```
+
+
+
+```{r}
+
+star_files <- star_files[ c(1,2,3,7,8,9,4,5,6,10,11,12) ]
+star_files
+```
+Perfecto. Podemos seguir.
+
+
+A continuación, extraemos la segunda columna de cada archivo ".tab", que es la columna que corresponde a recuentos de *reads* por transcripto si la secuenciación no es específica de cadena, y la agregamos a un dataframe *counts_df*. Finalmente, determinamos los nobres de filas y columnas de este dataframe.
+
+Los archivos *.tab son de texto, es recomendable que abran uno para investigarlo.
+
+
+```{r}
+counts_files <- lapply(star_files, read.table, skip = 4 )
+counts_df <- as.data.frame( sapply( counts_files, function(x) x[ ,2] ) )
+
+colnames(counts_df) <- coldata$names
+row.names(counts_df) <- counts_files[[1]]$V1
+```
+
+¡Ya podemos usar *DESeq2* para buscar genes con expresión diferencial!
+
+```{r}
+dsq <- DESeqDataSetFromMatrix(counts_df, coldata, ~treatm)
+```
+
+¿Qué quiere decir el mensaje que emite DESeq2? No es ni un mensaje de error ni una alerta
+
+Lo que hicimos fue generar a partir de os recuentos de reads y de la metadata del experimento un dataset específico del paquete DESeq2:
+
+```{r}
+summary(dsq)
+```
+```{r}
+dim(dsq)
+```
+
+Tenemos 7127 genes y 12 muestras, pero todavía no tenemos valores de expresión diferencial. Pero antes de hacer esp veamos cómo se distribuyen los valores de conteos de reads convertidos a logaritmos en base 10. Esta transformación es útil porque hay variaciones muy grandes en recuentos por gen:
+
+```{r}
+range( rowSums( counts(dsq) ) )
+```
+
+Vemos que hay valores de recuentos por gen iguales a cero, entonces para calcular los logaritmos le vamos a sumar uno a todos:
+
+```{r}
+hist(log10( rowSums(counts(dsq)+1 )))
+```
+
+En este histograma vemos que hay valores de recuentos por gen muy bajos. Esto es, son bajos incluso considerando la suma de recuentos de las 12 muestras. Además, unos cuantos deben son cero. 
+
+En general, los recuentos bajos tienen poca importancia biológica y además suelen ser estadísticamente no significativos. También crean ruido en los análisis aquellos casos donde solo unas pocas muestras concentran la mayoría de los reads. incluir el testeo de genes con estas características aumenta la probabilidad de falsos negativos. Es decir, que declaremos genes sin expresión diferencial, cuando en realidad presentan expresión diferencial significativa.
+
+Entonces, teniendo en cuenta nuestros números podríamos considerar dos filtros:
+
+* Retener genes con 40 o más reads para el total de muestras
+* Retener genes que tengan al menos tres muestras con recuentos de 10 o más reads
+
+
+```{r}
+filtr_1 <- rowSums(counts(dsq)) >= 40
+filtr_2 <- rowSums(counts(dsq) >= 20) > 3
+```
+
+Y luego aplicamos estos filtros a nuestro dataset de DESeq2 y miramos el histograma:
+
+```{r}
+dsq_f <- dsq[filtr_1 & filtr_2, ]
+hist(log10(rowSums(counts(dsq_f))))
+```
+
+Mejor. Sacamos los genes con recuentos totales iguales a cero y unos cuantos con recuentos muy bajos, pero sin eliminar demasiados:
+
+```{r}
+dim(dsq_f)
+```
+
+Por supuesto que para hacer filtrado podríamos haber realizado otros controles, pero estos dos que hicimos son los que usualmente causan más problemas. 
+
+Ahora podemos empezar a mirar resultados. Si consideramos que cada uno de los 5984 genes es una variable que puede separar las muestras, sería interesante aplicar alguna técnicas multivariada que nos permita ver esto. Una muy común es el Análisis de Componentes Principales (PCA), que es una técnica de reducción de variables. Esto es, nos permite ver en unas pocas dimensiones -con suerte dos- gran parte de la variabilidad total presente en la matriz de recuentos. Para este análisis necesitamos aplicar un transformación que estabilice la varianza, pero sólo para este anáisis,  no para los de expresión diferencial.
+
+```{r}
+rl_dsq_f <- rlog(dsq_f)
+plotPCA(rl_dsq_f,  intgroup="treatm")
+```
+
+Presten atención a la diferencia entre controles. No está bueno ...
+
+¡¡ Redoble de tambores !! Genes con expresión diferencial:
+
+```{r}
+genes_de <- DESeq(dsq_f)
+res <- results(genes_de)
+res
+```
+Miren la primera fila:
+
+log2 fold change (MLE): treatm control2 vs ampho 
+
+Esto no es lo que queremos... porque es la comparaciön entre el tratamiento con anfotericina B y 
+el control del otro tratamiento. Pero se arregla fácil:
+
+```{r}
+res1 <- results(genes_de, contrast = c("treatm", "ampho", "control" ))
+res1
+```
+
+```{r}
+summary(res1, alpha  = 0.05)
+```
+¡Bien! ¡Hay paper! 
+
+Tenemos muchos genes con expresión diferencial estadísticamente significativa cuando se considera el p ajustado por falsos positivos. Tal vez son demasiados genes, pero fijense que el log2 fold-change (LFC) cuenta genes menores o mayores de cero. Esto es bastante permisivo. Un gen con un fold-change bajo, digamos, 0.2, es casi imposible de validar por qPCR, y además uno podría plantearse la importancia biológica de un gen que aumenta su expresión sólo un 15% (2^0.2).
+
+Lo podemos filtrar fácil. De manera arbitraria seleccionamos un umbral de LFC igual a 1.25. Por un lado, los genes que cumplen con esto se van a poder validar más fácil por qPCR, y la lista puede ser corta. Por el otro, si después quisiéramos hacer un análisis de enriquecimiento de genes (*geneset enrichment analysis*) para detectar si hay, por ejemplo, vias metabólicas más activas que otras, podríamos querer una lista más larga.
+
+```{r}
+res1_estricto <- results(genes_de, contrast = c("treatm", "ampho", "control" ),
+                         lfcThreshold = 1.25, alpha = 0.05)
+summary(res1_estricto)
+```
+
+Tenemos 31 genes *up-regulados* y uno *down-regulados*.
+Podemos extraer este subconjunto de datos:
+
+
+```{r}
+genes_de_res1_estricto <- subset(res1_estricto , padj < 0.05)
+```
+
+¿Precisamos un dataframe con todos estos genes y los números calculados?
+
+```{r}
+as.data.frame(genes_de_res1_estricto)
+```
+
+
+¿Cuáles son estos estos genes?
+
+```{r}
+id_genes_res1 <- rownames(genes_de_res1_estricto)
+id_genes_res1
+```
+
+Ahora podemos calcular los genes con expresión diferencial del otro tratamiento con el criterio estricto que ya usamos:
+
+```{r}
+res2_estricto <- results(genes_de, contrast = c("treatm", "ampho_lacto", "control2" ),
+                          lfcThreshold = 1.25, alpha = 0.05)
+summary(res2_estricto)
+```
+
+En este caso tenemos 51 genes con expresión diferencial
+
+```{r}
+genes_de_res2_estricto <- subset(res2_estricto , padj < 0.05)
+id_genes_res2 <- rownames(genes_de_res2_estricto)
+
+```
+
+¿Hay genes con expresión diferencial en ambos tratamientos?
+
+```{r}
+intersect(id_genes_res1, id_genes_res2)
+```
+
+Hay 25 genes con expresión diferencial en ambos tratamientos.
+¿Y hay genes que tienen expresión diferencial en presencia de anfotericina B y lactoferrina, pero no cuando están solo expuestos a lactoferrina?
+
+```{r}
+propios_lacto <- setdiff(id_genes_res2, id_genes_res1)
+propios_lacto
+```
+
+Atención: al usar *diff()* el orden es importante.
+
+son 26 genes ¿Podemos extraer alguna información extra? En las clases de Python habíamos visto como interrogar a KEGG o a SGD con una lista de genes. Desde R también se puede hacer, pero hay otra herramienta que nos va a facilitar esta tarea, el (paquete de anotación de *S. cerevisiae* de Bioconductor)[https://bioconductor.org/packages/release/data/annotation/html/org.Sc.sgd.db.html]:
+
+
+```{r}
+library(org.Sc.sgd.db)
+ydb <- org.Sc.sgd.db
+```
+
+Esta es la información que tiene disponible:
+
+```{r}
+keytypes(ydb)
+```
+
+Importante: la versión actual tiene desactualizada la información de KEGG. No la usen.
+
+Vamos a extraer los nombres de los genes, los números de acceso de los genes, transcriptos y proteínas del NCBI y la descripción que almacena SGD para estos genes.
+
+```{r}
+anot_propios_lacto <-  select(org.Sc.sgd.db,
+                          keys = propios_lacto, 
+                          keytype = "ENSEMBL",
+                          columns = c("GENENAME", "REFSEQ", "ENTREZID", 
+                                      "DESCRIPTION" ))
+
+write.table(anot_propios_lacto, "DE_propios_lacto.csv", row.names = FALSE)
+```
+
+Al mirar el archivo presten atención que hay más de una línea para cada gen. 
+
+Se ven genes relacionados con respuesta a estrés, respuesta a metales y metabolismo de aminoácidos. En el paper hacen más experimentos y un análisis más minucioso, pero nuestros resultados parciales van en la misma dirección que los que comentan los autores.

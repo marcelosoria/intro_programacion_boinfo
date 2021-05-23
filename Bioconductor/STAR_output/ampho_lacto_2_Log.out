@@ -1,0 +1,130 @@
+STAR version=2.7.7a
+STAR compilation time,server,dir=Mon Dec 28 13:38:40 EST 2020 vega:/home/dobin/data/STAR/STARcode/STAR.master/source
+##### Command Line:
+STAR --runThreadN 14 --runMode alignReads --quantMode GeneCounts --genomeDir reference/star_yeast_index --readFilesIn trimmed/tr_SRR3396389.sra_1.fastq trimmed/tr_SRR3396389.sra_2.fastq --outFileNamePrefix star_output/ampho_lacto_2_
+##### Initial USER parameters from Command Line:
+outFileNamePrefix                 star_output/ampho_lacto_2_
+###### All USER parameters from Command Line:
+runThreadN                    14     ~RE-DEFINED
+runMode                       alignReads     ~RE-DEFINED
+quantMode                     GeneCounts        ~RE-DEFINED
+genomeDir                     reference/star_yeast_index     ~RE-DEFINED
+readFilesIn                   trimmed/tr_SRR3396389.sra_1.fastq   trimmed/tr_SRR3396389.sra_2.fastq        ~RE-DEFINED
+outFileNamePrefix             star_output/ampho_lacto_2_     ~RE-DEFINED
+##### Finished reading parameters from all sources
+
+##### Final user re-defined parameters-----------------:
+runMode                           alignReads
+runThreadN                        14
+genomeDir                         reference/star_yeast_index
+readFilesIn                       trimmed/tr_SRR3396389.sra_1.fastq   trimmed/tr_SRR3396389.sra_2.fastq   
+outFileNamePrefix                 star_output/ampho_lacto_2_
+quantMode                         GeneCounts   
+
+-------------------------------
+##### Final effective command line:
+STAR   --runMode alignReads   --runThreadN 14   --genomeDir reference/star_yeast_index   --readFilesIn trimmed/tr_SRR3396389.sra_1.fastq   trimmed/tr_SRR3396389.sra_2.fastq      --outFileNamePrefix star_output/ampho_lacto_2_   --quantMode GeneCounts   
+----------------------------------------
+
+Number of fastq files for each mate = 1
+Finished loading and checking parameters
+Reading genome generation parameters:
+### STAR   --runMode genomeGenerate   --runThreadN 14   --genomeDir reference/star_yeast_index   --genomeFastaFiles reference/Saccharomyces_cerevisiae.R64-1-1.dna_sm.toplevel.fa      --sjdbGTFfile reference/Saccharomyces_cerevisiae.R64-1-1.51.gtf   --sjdbOverhang 89
+### GstrandBit=32
+versionGenome                 2.7.4a     ~RE-DEFINED
+genomeType                    Full     ~RE-DEFINED
+genomeFastaFiles              reference/Saccharomyces_cerevisiae.R64-1-1.dna_sm.toplevel.fa        ~RE-DEFINED
+genomeSAindexNbases           14     ~RE-DEFINED
+genomeChrBinNbits             18     ~RE-DEFINED
+genomeSAsparseD               1     ~RE-DEFINED
+genomeTransformType           None     ~RE-DEFINED
+genomeTransformVCF            -     ~RE-DEFINED
+sjdbOverhang                  89     ~RE-DEFINED
+sjdbFileChrStartEnd           -        ~RE-DEFINED
+sjdbGTFfile                   reference/Saccharomyces_cerevisiae.R64-1-1.51.gtf     ~RE-DEFINED
+sjdbGTFchrPrefix              -     ~RE-DEFINED
+sjdbGTFfeatureExon            exon     ~RE-DEFINED
+sjdbGTFtagExonParentTranscripttranscript_id     ~RE-DEFINED
+sjdbGTFtagExonParentGene      gene_id     ~RE-DEFINED
+sjdbInsertSave                Basic     ~RE-DEFINED
+genomeFileSizes               14745220   100830654        ~RE-DEFINED
+Genome version is compatible with current STAR
+Number of real (reference) chromosomes= 17
+1	I	230218	0
+2	II	813184	262144
+3	III	316620	1310720
+4	IV	1531933	1835008
+5	V	576874	3407872
+6	VI	270161	4194304
+7	VII	1090940	4718592
+8	VIII	562643	6029312
+9	IX	439888	6815744
+10	X	745751	7340032
+11	XI	666816	8126464
+12	XII	1078177	8912896
+13	XIII	924431	10223616
+14	XIV	784333	11272192
+15	XV	1091291	12058624
+16	XVI	948066	13369344
+17	Mito	85779	14417920
+--sjdbOverhang = 89 taken from the generated genome
+Started loading the genome: Thu May 20 22:14:04 2021
+
+Genome: size given as a parameter = 14745220
+SA: size given as a parameter = 100830654
+SAindex: size given as a parameter = 1
+Read from SAindex: pGe.gSAindexNbases=14  nSAi=357913940
+nGenome=14745220;  nSAbyte=100830654
+GstrandBit=32   SA number of indices=24443794
+Shared memory is not used for genomes. Allocated a private copy of the genome.
+Genome file size: 14745220 bytes; state: good=1 eof=0 fail=0 bad=0
+Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 14745220 bytes
+SA file size: 100830654 bytes; state: good=1 eof=0 fail=0 bad=0
+Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 100830654 bytes
+Loading SAindex ... done: 1565873619 bytes
+Finished loading the genome: Thu May 20 22:14:05 2021
+
+Processing splice junctions database sjdbN=364,   pGe.sjdbOverhang=89 
+alignIntronMax=alignMatesGapMax=0, the max intron size will be approximately determined by (2^winBinNbits)*winAnchorDistNbins=589824
+Created thread # 1
+Created thread # 2
+Created thread # 3
+Created thread # 4
+Created thread # 5
+Created thread # 6
+Created thread # 7
+Created thread # 8
+Created thread # 9
+Created thread # 10
+Created thread # 11
+Created thread # 12
+Created thread # 13
+Thread #11 end of input stream, nextChar=-1
+Completed: thread #4
+Completed: thread #8
+Completed: thread #3
+Completed: thread #0
+Completed: thread #5
+Completed: thread #7
+Completed: thread #9
+Completed: thread #6
+Completed: thread #12
+Completed: thread #13
+Completed: thread #2
+Completed: thread #10
+Completed: thread #11
+Completed: thread #1
+Joined thread # 1
+Joined thread # 2
+Joined thread # 3
+Joined thread # 4
+Joined thread # 5
+Joined thread # 6
+Joined thread # 7
+Joined thread # 8
+Joined thread # 9
+Joined thread # 10
+Joined thread # 11
+Joined thread # 12
+Joined thread # 13
+ALL DONE!
