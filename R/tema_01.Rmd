@@ -1,0 +1,324 @@
+---
+title: "Primeros pasos en R (tema 01)"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+R es un lenguaje de programación. Aunque muchos se acercan a R para hacer análisis estadísticos o visualizaciones y aprenden los comandos básicos para ello, tiene todas las características de un lenguaje de programación. Vamos a encontrar diferentes tipos de datos básicos, estructuras de datos más complejas, estructuras de iteración, condcionales, etc.
+
+Todo lo que aprendimos de programación con python nos va a facilitar mucho el camino. Lo que va a presentar alguna dificultad es que la síntaxis de R es diferente a la de python. Algunos componentes de los lenguajes comparten nombres en python y R, otros son diferentes. También hay hay funcionalidades que en un lenguaje son nativas y en el otro requieren una *library*.
+
+Pero si avanzamos de a poco y ensuciándonos las manos entrando y modificando código, vamos a descubrir que no es tan complejo como a veces pueden leer o escuchar por ahí. 
+
+Para las clases de R vamos ausar RStudio, que es una GUI diseñada específicamente para R. Tmbién se podría usar Jupyter, pero RStudio es prácticamente un estándar en la comunidad y al ser una aplicación pensada para R, nos facilita el trabajo.
+
+Para empezar vamos a cargar RStudio y abrir un proyecto nuevo (File > New Project...). Esto es, indicamos donde queremos crear una carpeta para organizar código, datos, figuras, etc. en esta carpeta pueden copiar los archivos correspondientes a las clases de R desde el repositorio que descrgaron o clonaron de Github
+
+Una vez que tenemos el proyecto de R listo, abrimos una notebook nueva (File > New File > R Notebook) o abrimos algunas de las descargas de Github, en este caso el módulo 01.
+
+## Lo más básico de la linea de comandos
+```{r}
+2+2
+
+```
+
+Seguramente este es el uso menos habitual de R. Pero lo podemos usar como calculadora...
+Lo importante en este momento es reconocer como interactuamos: ingresamos un comando y el sistema responde.
+
+Podemos usar R para operaciones un poco más complejas:
+
+```{r}
+(5 * 8) + 32 + 2^3
+sqrt(2)
+log(10)
+log10(10)
+```
+
+¿Prestaron atención a los logaritmos arriba? *log()* calcula logaritmos naturales. Para calcular una raíz, no hace falta llamar una biblioteca, en R es parte del lenguaje base.
+
+Vamos a crear nuestra primera variable:
+
+```{r}
+a <- 2
+a = 2
+a + a 
+```
+
+Como operador de asignación se puede usar " <- " , que es el operador clásico, y también " = ". 
+
+Los que aprendimos R hace tiempo estamos acostumbrados al primero, pero ambos son equivalentes. Aunque en algunos contextos usar " <- " o " -> " es más claro.
+
+Ahh... nos faltaba lo básico de cualquier lenguaje.
+
+```{r}
+b <- "hello world"
+b
+print(b)
+```
+
+
+Vamos a hacer algo que va a generar un error:
+
+```{r}
+a <- 2
+b <- "hello world"
+```
+
+```
+b + c
+Error in b + c : non-numeric argument to binary operator
+```
+
+En este caso, tenemos dos tipos de variables, un escalar y un cadena de caracteres ("string"):
+
+```{r}
+typeof(a)
+typeof(b)
+```
+
+De paso, este es nuestro segundo uso de una función en R en este bloque, el primero fue con _print(a)_, y ahora con _typeof(a)_. Anteriormente calculamos la raíz cuadrada y logaritmos también mediante funciones.
+
+R no es un lenguaje puramente funcional, pero mucho de lo que hacemos, lo hacemos a través de funciones. Usamos más funciones en R que en Python.
+
+Las dos funciones que usamos hasta ahora requieren un solo argumento. Algunas no tienen ninguno, otras tienen varios. Es común que las funciones tengan argumentos que ya traen algún valor por defecto, que se pueden modificar.
+
+### Estructuras de datos
+
+Vectores de números:
+
+```{r}
+x <- c(1,3,5,7,9)
+x
+```
+
+Noten el uso de la función _c()_. Lo podemos recordar como la función de concatenación. Es una de las formas más frecuentes de construir vectores en R.
+
+
+Extendamos el ejemplo anterior:
+
+```{r}
+y <- c(2,4,6,8,10)
+y
+```
+
+Ahora vamos a hacer algunas operaciones con estos vectores:
+
+```{r}
+x + 2
+x * 3
+x * y
+```
+
+¿Qué pasó en la multiplicación?
+Es una multiplicación de elemento por elemento. No es un producto vectorial. Para hacer el producto escalar de dos vectores tenemos que esperar un poco.
+
+También podemos construir vectores de caracteres:
+
+```{r}
+c <- c("a", "b", "c")
+```
+
+No hay problema: pueden convivir un vector **c** con la función *c()*.
+
+Antes habiamos creado una variable b que contenía la cadena de caracteres "hello world". 
+Las variables b y c están relacionadas, pero no son construcciones equivalentes. La variable _b_ tiene un solo elemento que es una cadena de caracteres. En cambio, _c_ es un vector de dos elementos. De esta manera, este comando es válido:
+
+```{r}
+d <- c("hello", "world")
+```
+
+Acabamos de crear un vector formado por dos cadenas de caracteres.
+
+Otro tipo de dato con el que nos vamos a encontrar unas cuantas veces son los __factores__. Hay que prestar atención porque al principio pueden confundirnos con las cadenas de caracteres. Por ejemplo,
+
+```{r}
+nseo <-  factor(c("norte", "sur", "este", "oeste"))
+nseo
+```
+
+Se usan para indicar los niveles de variables categóricas, por ejemplo para análisis estadísticos. Volveremos a esto.
+
+## Repaso hasta este momento
+
+__En este punto deberías:__
+
+* Poder ejecutar comandos sencillos desde la linea de comando de R.
+* Poder asignar un valor a una variable
+* Aunque no sepas qué hace, reconocer una función al verla.
+* Entender para qué sirve la función _c()_.
+* Poder construir vectores de caráracteres o de cadenas de carácteres.
+* Construir vectores numéricos y realizar operaciones matemáticas sobre ellos.
+
+Esto es lo que necesitamos para continuar. Si hay otras cosas que no entiendas, no te preocupes. No son críticas para el próximo paso, y seguramente volveremos a ellas.
+
+__Algunas funciones que deberíamos guardar para tener a mano__
+
+* _c()_ : construcción de vectores
+* _typeof()_ : consulta de tipo de dato
+
+## Operaciones con vectores
+R es un lenguaje que opera principalmente sobre vectores y estructuras de datos relacionados con ellos.
+
+Por este motivo, para manejar bien R hay que familiarizarse con su uso. Hay muchas funciones para crear, modificar y operar con vectores. Vamos a ver algunas.
+
+__Importante__: los vectores en R se comienzan a numerar desde uno.
+
+
+###Secuencias
+
+Muchas veces necesitamos vectores que son secuencias de números. Hasta ahora los creamos ingresando los elementos uno por uno, pero hay maneras más fáciles. Por ejemplo:
+
+```{r}
+vec1 <- 1:20
+vec2 <- 20:1
+```
+
+Para secuencias más complejas tenemos dos funciones que nos van a ayudar _seq()_ y _rep()_.
+
+```{r}
+seq(2,20,2)
+rep(1,10)
+```
+
+En el primer caso, ejecutamos _seq()_ para generar una secuencia que va desde 2 hasta 20 con incrementos de 2. Y en el segundo repetimos el número 1 diez veces. 
+
+Los dos comandos son bastante flexibles, y para aprenderlos nos va a ayudar indicar explicitamente sus argumentos:
+
+```{r}
+seq(from=2, to=20, by=2)
+rep(x=1, times=10)
+```
+
+Ahora vamos a ver qué otras posibilidades nos ofrece _seq()_.  Pero primero revisemos un listado de los argumentos más útiles.
+
+* __from__: desde donde empieza la secuencia
+* __to__: hasta donde llega
+* __by__: valor del incremento
+* __lengh.out__: largo deseado de la secuencia
+
+
+En general, no es posible combinar todos los argumentos en una sola llamada a la función. Pero sí se pueden usar aquellas combinaciones que permitan hacer secuencias válidas.
+
+```{r}
+seq(from = 0, by = 0.2, length.out = 20)
+seq(1, length.out = 20)
+# length.out se puede abreviar:
+seq(from = 1, to = 10, len = 100)
+
+```
+
+Hay un argumento menos usado que es _along.with_, y sirve para asociar una secuencia a un vector que ya tenemos. Supongamos que vec3 es un vector que contiene la cantidad de veces que ocurrió algún evento diario a partir del dia 15 del mes. 
+
+```{r}
+vec3 <- c(4,8,9,12,15,2,3)
+vec4 <- seq(from=15, along.with=vec3)
+cbind(vec4, vec3)
+```
+
+Y ahora supongamos que en realidad son eventos que se registraron cada dos dias.
+
+```{r}
+vec5 <- seq(from=15, along.with=vec3, by=2)
+cbind(vec5, vec3)
+```
+
+En el código anterior usamos por primera vez la función __cbind__ para combinar vectores del mismo tipo por columnas. Hay una función similar para hacer lo mismo por filas:
+
+```{r}
+rbind(vec4, vec3)
+```
+
+La otra función que habíamos mencionado para generar secuencias era _rep()_. veamos primero sus argumentos más comunes.
+
+* __x__: lo que queremos repetir. Puede ser un escalar o un vector.
+* __times__: cuantas veces lo queremos repetir.
+* __length.out__: el largo total de la secuencia. Es útil cuando x es un vector.
+* __each__: cuántas veces queremos repetir cada elemento del vector. 
+
+Algunos ejemplos:
+
+```{r}
+ab <- c(1,2)
+rep(ab,5)
+rep(ab, length.out=4)
+rep(ab, each=3)
+# y si a times le pasamos un vector podemos crear repeticiones desiguales
+rep(ab, times=c(2,4))
+```
+
+###Indexado
+
+¿Cómo recupero el primer elemento de un vector?
+¿Cómo averiguo el largo de un vector?
+¿Puedo copiar parte de un vector en otro?
+
+```{r}
+vec1 <- 1:20
+vec1[1]
+vec1[10:20]
+
+length(vec1)
+
+# el vector sin el primer elemento
+vec1[-1]
+
+# el vector sin el primer y tercer elemento
+vec1[-c(1,3)]
+
+# copiamos los elementos 3 al 7 del vector a uno nuevo:
+vec2 <- vec1[3:7]
+
+```
+
+
+##Ayuda en R
+Para buscar ayuda de una función, podemos buscarla por nombre:
+```
+# información general
+help(rep)
+
+# cualquier información sobre rep
+??rep
+
+# Solo la parte de ejemplos de la ayuda
+example(rep)
+
+```
+
+También podemos llamar al sistema de ayuda de R:
+
+```
+help.start()
+
+```
+
+Hay más opciones. Una es revisar preguntas anteriores, o hacer las nuestras, en stackoverflow o en las listas de mail del proyecto R:
+
+*http://stackoverflow.com
+*http://www.r-project.org/mail.html
+
+Antes de hacer preguntas en los foros, conviene revisar que no estén hechas.
+
+En el blog r-bloggers se pueden leer notas que se recopilan de diferentes blogs:
+http://www.r-bloggers.com/
+
+
+## Repaso hasta este momento
+
+__Al haber llegado a este punto deberías saber cómo:__
+
+* Construir secuencias
+* Extraer partes de un vector manipulando su indice.
+* Buscar ayuda en R
+
+__Algunas funciones que deberíamos guardar para tener a mano__
+
+* _cbind()_ : combinar vectores en forma vertical
+* _rbind()_ : combinar vectores en forma horizontal
+* _seq()_ : construcción de secuencias
+* _rep()_ : secuencias con elementos repetitivos
+* _help()_, _??tema, help.start()_ : ayuda en R
+
+
