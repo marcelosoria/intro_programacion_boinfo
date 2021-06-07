@@ -1,5 +1,4 @@
 # 1. Software necesario (algunos de estos programas pueden a su vez tener 
-#
 # otros requerimientos
 # NCBI SRA tools (https://github.com/ncbi/sra-tools)
 # FastQC (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
