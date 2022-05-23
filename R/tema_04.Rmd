@@ -1,8 +1,8 @@
 ---
 title: "Sentencias condicionales y funciones en R"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ## Sentencias condicionales

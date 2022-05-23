@@ -1,0 +1,265 @@
+---
+title: "Algunas recetas para análisis de diversidad genética"
+output:
+  html_document:
+    df_print: paged
+---
+
+En esta clase veremos cómo manejar secuencias desde R/Bioconductor y plantear algunos casos típicos que ocurren en los análisis de diversidad que hacen quienes trabajan en filogenía, genética de poblaciones o mejoramiento genético.
+
+# Paquetes a utilizar
+
+Vamos a precisar varios paquetes para este práctico, incluyendo algunas del proyecto Bioconductor.
+
+Bioconductor (<https://bioconductor.org/>) es un proyecto basado en R que tiene por objetivo publicar y mantener en forma organizada y sincronizada una gran cantidad de paquetes para bioinformática.
+
+Para poder usar las herramientas de Bioconductor primero hay que instalar el gestor de Bioconductor:
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+   install.packages("BiocManager")
+
+```
+
+Una vez que se completa este paso, se pueden instalar las libraries que necesitemos. Esto se hace una sola vez (por eso el código de abajo está comentado) en la computadora donde estamos trabajando. 
+
+Para cada sección vamos a ir instalando o cargando lo que haga falta.
+
+# Alineamientos múltiples y árboles desde R
+
+## Para este ejercicio en particular precisamos:
+
+```{r}
+# BiocManager::install("msa")
+```
+
+Además, vamos a precisar algunas bibliotecas de R que sirven para manipular secuencias de nucleótidos y aminoácidos, pero no son parte de Bioconductor. EL código que sigue está comentado porque se ejecuta una sola vez.
+
+```{r}
+# install.packages("seqinr")
+# install.packages("phangorn")
+```
+
+```{r}
+library(seqinr)
+library(msa)
+library(phangorn)
+```
+
+## Datos a analizar
+
+Para esta práctica vamos a usar algunas secuencias de transcriptos de trigo relacionadas al gen PRB1.2. El nombre del archivo es secuencia_tipo_PRB1_2_trigo.fasta y lo tienen disponible en la carpeta de trabajo de este proyecto.
+
+## Procedimiento general
+
+El archivo fasta que vamos a analizar tiene varias secuencias de transcriptos derivados de genes relacionados entre sí y que codifican para una proteína involucrada en las respuestas de defensa contra patógenos fúngicos. 
+
+
+### Lectura del archivo fasta
+
+En este caso vamos a leer el archivo fasta usando la función *read.fasta()* del paquete *seqinr*
+
+```{r}
+prb1 <- read.fasta("secuencia_tipo_PRB1_2_trigo.fasta", seqtype = "DNA", as.string = T)
+
+```
+
+Además de indicar el nombre, tenemos que indicar si es una secuencia de nucleótidos ("DNA") o de aminoácidos ("AA"). Las secuencias se pueden leer como vectores de caracteres o como un string de múltiples caracteres; en este caso estamos usando la segunda variante.
+
+Con la función *summary()* podemos ver los identificadores de las secuencias y el largo de cada una de ellas, y con *names()* solo los nombres:
+
+```{r}
+summary(prb1)
+```
+
+```{r}
+names(prb1)
+```
+Y si lo que precisamos es la linea completa de descripción usamos *getAnnot()*
+
+```{r}
+prb1_annot <- getAnnot(prb1)
+
+```
+
+La función *getAnnot()* devuelve una lista. A veces es más práctico trabajar con vectores de cadenas de caracteres. Hay varias formas de hacer la conversión, una de ellas es:
+
+```{r}
+prb1_annot <- sapply(prb1_annot, unlist)
+```
+
+Lo que acabamos de hacer es recorrer la lista elemento por elemento y aplicarle la función *unlist()* que "plancha" una lista a un vector.
+
+
+Con *getLength()* recuperamos el número total de secuencias:
+
+```{r}
+getLength(prb1)
+```
+
+También con *seqinr* podemos referirnos a una secuencia en particular:
+
+```{r}
+ prb1$`XM_044586353.1:1-557`
+```
+Y recuperar el largo de esta secuencia en particular:
+
+```{r}
+getLength(prb1$`XM_044586353.1:1-557`)
+```
+En este punto ya tenemos una buena de la cantidad de secuencias que tenemos para trabajr, también conocemos la distribución de sus largos y a partir de las anotaciones tenemos una idea de sus orígenes y como fueron caracterizadas. Pasemos al segundo paso, el alineaiento
+
+### Construcción de un alineamiento múltiple
+
+Existen diferentes métodos para construir alineamientos múltiples. El método *muscle* es uno bastante rápido y efectivo, y es uno de los que están implementados en el paquete *msa* (msa: multiple sequence alignment).  
+
+En primer lugar vamos a leer el mismo archivo que antes, pero ahora con la función *readDNAStringSet()* del paquete *Biostrings*. De esta manera vamos a tener un objeto compatible con las funciones para alinear del paquete *msa*
+
+
+```{r}
+prb1_bstring <- readDNAStringSet("secuencia_tipo_PRB1_2_trigo.fasta")
+```
+
+Veamos qué tenemos:
+
+```{r}
+prb1_bstring
+```
+
+Procedamos con el alineamiento:
+
+```{r}
+prb1_msa <- msa(prb1_bstring, method = "Muscle")
+
+```
+
+La función *msa()* incluye un número importante de parámetros que se corresponden con parámetros del programa *muscle* y así poder ajustar la ejecución del alineamiento. Aquí usamos todas las opciones por defecto. Para más imformación pueden consultar este documento:
+
+http://bioconductor.org/packages/release/bioc/vignettes/msa/inst/doc/msa.pdf
+
+Si todo funcionó bien, podemos ver información general y una vista parcial del alineamiento:
+
+```{r}
+prb1_msa
+```
+
+Para ver el alineamiento completo por pantalla, correr:
+
+```{r, eval=FALSE}
+print(prb1_msa, show="complete")
+
+```
+
+El paquete *msa* incluye funciones para guardar la salida de este alineamiento para nuestra consulta. Es decir, formateada para facilitar nuestra lectura, pero no para que lo use otro script ni programa. Para más detalles sobre esto, consulten el manual citado más arriba.
+
+Un elemento del alineamiento que nos puede resultar útil es la matriz consenso. Esta matriz nos informa la frecuencia de cada nucleótido, usando el código extendido extendido IUPAC para sitios polimórficos, el número de sitios enmascarados con el símbolo + (no usamos enmascarados), el número de sitios con gaps, con el símbolo -, o si hay algún carácter no reconocido, con el símbolo -. 
+
+
+```{r}
+matriz_consenso <- consensusMatrix(prb1_msa)
+matriz_consenso[, 30:42]
+```
+También podemos obtener la secuencia consenso:
+
+```{r}
+secuencia_consenso <- msaConsensusSequence(prb1_msa)
+```
+
+La función devuelve un cadena de caracteres. Para ver el consenso entre las posiciones 39 y 80 hacemos:
+
+
+```{r}
+substring(secuencia_consenso, first = 39, last = 80)
+```
+
+Existen diferentes paquetes de R/Bioconductor que pueden operar con alineamientos. El paquete *msa* tiene una función para hacer conversiones que permiten pasar un alineamiento a otros paquetes. Nosotros vamos a convertir nuestro alineamiento a un objeto de alineamiento de *seqinr* para poder calcular una matriz de distancia y graficar un árbol filogenético.
+
+
+```{r}
+prb1_aln <- msaConvert(prb1_msa, type="seqinr::alignment")
+
+```
+
+Y ahora calculamos la matriz de distancia usando una función de identidad sin considerar los gaps entre pares de secuencias. Existen otros paquetes que permiten calcular otras medidas de distancia.
+
+
+```{r}
+prb1_aln_dist <- dist.alignment(prb1_aln, matrix = "identity", gap = F)
+```
+
+
+El paso anterior calcula distancias entre pares de secuencias. Si quisiéramos restringir el cálculo de la matriz de distancia a la zona del alineamiento donde todas las posiciones tienen un nucleótidos de cada secuencia, tenemos que "recortar"el alineamiento y restringirlo a la región las posiciones 39 y 247: 
+
+```{r}
+prb1_aln_sub <- prb1_aln
+for(i in 1:prb1_aln_sub$nb){
+  prb1_aln_sub$seq[[i]] <- substring(prb1_aln$seq[[i]], 39, 547)
+}
+```
+
+Como tarea adicional vamos a recortar los nombres de las secuencias porque son muy largos:
+
+```{r}
+nombres_cortos <- sapply(strsplit(prb1_aln_sub$nam, " "), function(x) x[1])
+prb1_aln_sub$nam <- nombres_cortos
+prb1_aln_sub$nam
+```
+Y ahora calculamos la matriz de distancia de este segundo alineamiento
+
+
+```{r}
+prb1_aln_sub_dist <- dist.alignment(prb1_aln_sub, matrix = "identity", gap = F)
+```
+
+Nos queda calcular el árbol filogenético. Para esto necesitamos el paquete *ape* que probablemente ya lo tienen instalado. Si este no fuera el caso, correr antes:
+
+```{r}
+# install.packages("ape")
+library(ape)
+
+```
+
+Luego:
+
+```{r}
+prb1_aln_sub_tree <- nj(prb1_aln_sub_dist)
+plot(prb1_aln_sub_tree, main="Arbol filogenetico, secuencias relacionadas a Prb1")
+
+```
+
+Vamos a guardar el gráfico en un archivo tipo .png:
+
+```{r}
+grafico_1 <- plot(prb1_aln_sub_tree, 
+                  main="Arbol filogenetico, secuencias relacionadas a Prb1")
+
+dev.copy(png,"Prb1.png")
+dev.off()
+```
+
+
+Y también vamos a guardar el alineamiento en formato fasta:
+
+```{r}
+prb1_aln_sub_fasta <- as.SeqFastadna(object = as.list(prb1_aln_sub$seq), 
+                                     name = prb1_aln_sub$nam)
+write.fasta(prb1_aln_sub_fasta, 
+            names = prb1_aln_sub$nam, 
+            file.out = "Prb1_aln_sub.fasta")
+```
+
+
+# ¿Cómo continuar?
+
+## Trabajando con archivos BAM o SAM
+
+Hay dos tareas frecuentes que se realizan con secuencias de alto rendimiento, como las que se producen con la tecnología Illumina. Una es realizar un ensamblado de un genoma contra un genoma de referencia. Otra tarea, emparentada con la anterior, es disponer de reads correspondientes a un amplicón de una región genómica que se obtuvieron de diferentes individuos y se busca descubrir la presencia de diversidad genética comparando contra una referencia.
+
+EXisten programas como bowtie2 o BWA que alinean los reads contra la referencia. Las salidas de estos programas son archivos SAM, o la versión binaria y comprimida BAM. Básicamente, son archivos de alineamiento, pero más complejos que los que vimos antes. Esto es así porque los archivos SAM/BAM guardan, almacenan información sobre si los reads se pudieron alinear o no, o si el alineamiento fue parcial. También almacena las coordenadas de cada read alineado y la calidad de los nucleótidos del read. Aqui es importante recordar que los archivos BAM/SAM guardan información de todos los reads mapeados. La mayoría de estos no van a ser relevantes para un estudio de diversidad. Por o tanto, el análisis de archivos BAM/SAM en el contexto de un estudio de diversidad es sobre todo una etapa de exploración y descubrimiento de variantes de interés.
+
+A partir de la variabilidad descubierta en los archivos BAM/SAM y la comparación con un genoma de referencia y entre individuos se infiere cuáles son los loci polimórficos para hacer un estudio de diversidad.En este punto se abren dos tipos de estudios diferentes. En los casos donde se aplican estrategias de diversidad del tipo GBS (genotyping by sequencing) es común que se generen de una vez secuencias de todos los individuos de interés y se compile la información de polimorfismos. En cambio, en otros estudios, un grupo especializado realiza la tarea de descubrimiento de diversidad, la valida, retiene la de mayor interés y la utiliza para generar microarrays de diversidad o diseñar pameles de marcadores de otro tipo. 
+
+En ambos casos la información compilada y resumida de diversidad gene'tica se informa y comparte usando archivos de tamaño mucho más reducido que los BM/SAM en los que se localiza en el genoma de referencia la ubicación de cada locus de interés y sus variantes Un formato muy frecuente para comunicar esta información son los archivos .vcf (Variant Call Format).
+
+R y Bioconductor tienen varios paquetes para hacer todos los análisis comentados. Pero son paquetes extensos, con muchas funciones y que abren diversas alternativas de trabajo. Además, su instalación a veces tiene algunas dificultades. Todo esto excede lo que podemos hacer en un curso introductorio. 
+
